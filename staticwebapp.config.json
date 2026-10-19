@@ -1,0 +1,75 @@
+{
+  "trailingSlash": "auto",
+  "routes": [
+    {
+      "route": "/api/contacto",
+      "methods": ["POST"],
+      "headers": { "Cache-Control": "no-store" }
+    },
+    {
+      "route": "/api/inversores",
+      "methods": ["POST"],
+      "headers": { "Cache-Control": "no-store" }
+    },
+    {
+      "route": "/api/health",
+      "methods": ["GET"],
+      "headers": { "Cache-Control": "no-store" }
+    },
+    {
+      "route": "/api/*",
+      "statusCode": 404
+    },
+    {
+      "route": "/admin/*",
+      "headers": {
+        "Content-Security-Policy": "default-src 'self'; script-src 'self' https://unpkg.com 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://bitbucket.org https://*.bitbucket.org https://*.atl-paas.net https://secure.gravatar.com; font-src 'self' data:; connect-src 'self' https://api.bitbucket.org https://bitbucket.org; frame-src 'self' blob:; worker-src 'self' blob:; media-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; upgrade-insecure-requests",
+        "X-Frame-Options": "SAMEORIGIN",
+        "Cache-Control": "no-store",
+        "X-Robots-Tag": "noindex, nofollow"
+      }
+    },
+    {
+      "route": "/.well-known/security.txt",
+      "headers": {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "public, max-age=86400"
+      }
+    },
+    {
+      "route": "/assets/fonts/*",
+      "headers": { "Cache-Control": "public, max-age=31536000, immutable" }
+    },
+    {
+      "route": "/assets/css/*",
+      "headers": { "Cache-Control": "public, max-age=31536000, immutable" }
+    },
+    {
+      "route": "/assets/js/*",
+      "headers": { "Cache-Control": "public, max-age=31536000, immutable" }
+    },
+    {
+      "route": "/assets/img/*",
+      "headers": { "Cache-Control": "public, max-age=86400" }
+    }
+  ],
+  "responseOverrides": {
+    "404": { "rewrite": "/404.html", "statusCode": 404 }
+  },
+  "globalHeaders": {
+    "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+    "Content-Security-Policy": "default-src 'self'; script-src 'self' https://challenges.cloudflare.com https://*.googletagmanager.com; style-src 'self'; img-src 'self' data: https://*.google-analytics.com https://*.googletagmanager.com; font-src 'self'; connect-src 'self' https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com; frame-src https://challenges.cloudflare.com; media-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests",
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()",
+    "X-Frame-Options": "DENY"
+  },
+  "mimeTypes": {
+    ".woff": "font/woff",
+    ".woff2": "font/woff2",
+    ".webmanifest": "application/manifest+json"
+  },
+  "platform": {
+    "apiRuntime": "python:3.11"
+  }
+}

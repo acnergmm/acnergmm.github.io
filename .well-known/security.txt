@@ -1,0 +1,6 @@
+# Contacto para informar vulnerabilidades del sitio de Puerto Santo Domingo (Fuelpar S.A.).
+# Formato según el RFC 9116. TI renueva la fecha de vencimiento antes de que pase, una vez al año.
+Contact: mailto:seguridad@psdparaguay.com
+Expires: 2027-10-04T23:59:59Z
+Preferred-Languages: es, en
+Canonical: https://www.psdparaguay.com/.well-known/security.txt

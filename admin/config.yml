@@ -1,0 +1,1096 @@
+# =============================================================================
+# Decap CMS 3.x · Administrador de contenidos de Puerto Santo Domingo (PSD)
+#
+# Dueño: DevOps y CMS. Marketing edita contenido desde /admin; nadie edita este
+# archivo salvo TI. Reproduce el modelo de contenido de ESPECIFICACION.md, seccion 5.
+#
+# ANTES DE USAR, TI completa dos marcadores (y nada mas):
+#   backend.repo    ->  <workspace>/psd-sitio-web   (el workspace real de Bitbucket)
+#   backend.app_id  ->  clave (Key) del consumidor OAuth de Bitbucket. Es un identificador
+#                       publico del flujo "implicit grant", NO es un secreto. El "Secret"
+#                       del consumidor no se usa ni se escribe en ningun lado.
+#
+# Como se leen las abreviaturas de este archivo:
+#   &nombre   define un trozo reutilizable (ancla de YAML)
+#   *nombre   lo reutiliza (alias). Los bloques de contenido se definen UNA sola vez, en la
+#             pagina Inicio, y las demas paginas los reutilizan. Para agregar un campo a un
+#             tipo de bloque se edita en ese unico lugar.
+#   No usar la clave de mezcla "<<": Decap puede cargar YAML con un esquema que no la admite.
+#
+# Idiomas (i18n single_file): en Paginas y en Textos del sitio cada archivo queda como
+# {"es": {...}, "en": {...}}. En Noticias y en Cifras NO se usa el i18n de Decap porque el
+# modelo de la especificacion tiene campos en la raiz del archivo (fecha, imagen, ejemplo)
+# o los idiomas dentro de cada cifra; alli es y en son dos objetos explicitos.
+# El detalle de cada diferencia con el modelo esta en README.md, seccion
+# "Decap CMS frente al modelo de contenido".
+#
+# Dentro de listas ("bloques", "items", "botones", ...) los campos de imagen, enlaces e ids
+# van como i18n: true y no como "duplicate": Decap no copia valores dentro de elementos de
+# lista de un idioma al otro, y un campo "duplicate" quedaria vacio y bloqueado en ingles.
+# Fuera de listas (cabecera.imagen, portada.imagen, correo_directo, nombre) si se usa duplicate.
+# =============================================================================
+
+backend:
+  name: bitbucket
+  repo: "<workspace>/psd-sitio-web"
+  branch: main
+  auth_type: implicit
+  app_id: "<clave-del-consumidor-oauth>"
+  squash_merges: true
+  commit_messages:
+    create: 'CMS: crear {{collection}} "{{slug}}"'
+    update: 'CMS: actualizar {{collection}} "{{slug}}"'
+    delete: 'CMS: eliminar {{collection}} "{{slug}}"'
+    uploadMedia: 'CMS: subir imagen "{{path}}"'
+    deleteMedia: 'CMS: eliminar imagen "{{path}}"'
+
+# Borrador -> En revision -> Listo. El editor redacta; el aprobador publica (R-11).
+# Cada borrador es una rama cms/... y un pull request en Bitbucket; el pipeline le
+# arma una vista previa. "Publicar" fusiona el pull request en main.
+publish_mode: editorial_workflow
+
+media_folder: assets/img
+# Vacio a proposito: el campo "imagen" del modelo guarda solo el nombre del archivo
+# (muelle.jpg), no una ruta. Si una subida de prueba guarda "/assets/img/..." en su lugar,
+# ver README, "Decap CMS frente al modelo de contenido", punto 7.
+public_folder: ""
+
+site_url: https://www.psdparaguay.com
+display_url: https://www.psdparaguay.com
+logo_url: /assets/img/isologo-psd.png
+locale: es
+
+slug:
+  encoding: ascii
+  clean_accents: true
+  sanitize_replacement: "-"
+
+i18n:
+  structure: single_file
+  locales: [es, en]
+  default_locale: es
+
+collections:
+  # ===========================================================================
+  # PAGINAS: un archivo por pagina (ESPECIFICACION.md, secciones 4 y 5.1).
+  # La pagina 404 no tiene archivo de contenido: sus textos estan en "Textos del sitio".
+  # ===========================================================================
+  - name: paginas
+    label: "Páginas"
+    label_singular: "Página"
+    description: "Una entrada por página. Cada una se edita en español y en inglés."
+    editor:
+      preview: false
+    files:
+      # ------------------------------------------------------------------ Inicio (T1)
+      - name: inicio
+        label: "Inicio"
+        description: "Plantilla T1 (portada del sitio)."
+        file: contenido/paginas/inicio.json
+        i18n: true
+        fields:
+          - label: "Dirección de la página (slug)"
+            name: slug
+            widget: string
+            required: false
+            i18n: true
+            hint: "En Inicio debe quedar vacío. No lo cambie."
+          - &campo_menu
+            label: "Nombre en el menú"
+            name: menu
+            widget: string
+            i18n: true
+          - &campo_seo
+            label: "Para buscadores (SEO)"
+            name: seo
+            widget: object
+            i18n: true
+            fields:
+              - label: "Título para buscadores"
+                name: titulo
+                widget: string
+                i18n: true
+                hint: "Hasta 60 caracteres. Es lo que se ve en la pestaña del navegador y en Google."
+                pattern: ['^.{1,60}$', "El título para buscadores puede tener hasta 60 caracteres."]
+              - label: "Descripción para buscadores"
+                name: descripcion
+                widget: string
+                i18n: true
+                hint: "Hasta 155 caracteres."
+                pattern: ['^.{1,155}$', "La descripción puede tener hasta 155 caracteres."]
+          - label: "Portada"
+            name: portada
+            widget: object
+            i18n: true
+            fields:
+              - {label: "Etiqueta", name: etiqueta, widget: string, i18n: true}
+              - {label: "Título", name: titulo, widget: string, i18n: true}
+              - {label: "Bajada", name: bajada, widget: text, i18n: true}
+              - {label: "Imagen", name: imagen, widget: image, choose_url: false, allow_multiple: false, i18n: duplicate, hint: "Elija una foto de la biblioteca o suba una nueva (JPG o PNG). Es la misma en los dos idiomas."}
+              - {label: "Texto alternativo de la imagen", name: alt, widget: string, i18n: true, hint: "Describa en una frase lo que se ve en la foto."}
+              - label: "Fotos que se suceden (opcional)"
+                name: fotos
+                widget: list
+                required: false
+                i18n: duplicate
+                label_singular: "foto"
+                summary: "{{fields.imagen}}"
+                hint: "Se funden después de la imagen principal, cada 6 segundos. Son decorativas: no llevan texto alternativo. Con dos o tres alcanza."
+                fields:
+                  - {label: "Imagen", name: imagen, widget: image, choose_url: false, allow_multiple: false, i18n: duplicate}
+              - label: "Botones"
+                name: botones
+                widget: list
+                i18n: true
+                label_singular: "botón"
+                summary: "{{fields.texto}}"
+                fields:
+                  - {label: "Texto del botón", name: texto, widget: string, i18n: true, hint: "Diga qué pasa al hacer clic, por ejemplo «Escribir a Nuevos Negocios»."}
+                  - label: "Enlace"
+                    name: url
+                    widget: string
+                    i18n: true
+                    hint: "Página del sitio: pagina:inversion (con ancla: pagina:contacto#formulario). Otro sitio: https://..."
+                    pattern: &patron_enlace
+                      - '^(pagina:(inicio|el-puerto|infraestructura|operaciones|seguridad|inversion|sostenibilidad|noticias|contacto|privacidad|aviso-legal|cookies|gracias-contacto|gracias-inversion)(#[A-Za-z0-9_-]+)?|https://[^\s]+|mailto:[^\s]+)$'
+                      - "Escriba pagina:<id> (por ejemplo pagina:inversion) o una dirección que empiece con https://"
+                  - label: "Estilo"
+                    name: estilo
+                    widget: select
+                    i18n: true
+                    default: claro
+                    options:
+                      - {label: "Claro (relleno)", value: claro}
+                      - {label: "Línea (solo contorno)", value: linea}
+              - label: "Datos destacados"
+                name: datos
+                widget: list
+                i18n: true
+                label_singular: "dato"
+                summary: "{{fields.valor}} {{fields.texto}}"
+                fields:
+                  - {label: "Valor", name: valor, widget: string, i18n: true, hint: "Por ejemplo 33 km o 24/7."}
+                  - {label: "Texto", name: texto, widget: string, i18n: true}
+          # Los bloques se definen aqui una sola vez. Las demas paginas los reutilizan.
+          - &campo_bloques
+            label: "Bloques de la página"
+            name: bloques
+            widget: list
+            i18n: true
+            required: false
+            typeKey: tipo
+            label_singular: "bloque"
+            hint: "Cada bloque es una sección de la página. Se muestran en este orden; use las flechas para moverlos."
+            types:
+              # ---------------------------------------------------------- texto
+              - &tipo_texto
+                label: "Texto"
+                name: texto
+                widget: object
+                summary: "Texto: {{fields.titulo}}"
+                fields:
+                  - {label: "Etiqueta (opcional)", name: etiqueta, widget: string, required: false, i18n: true}
+                  - {label: "Título (opcional)", name: titulo, widget: string, required: false, i18n: true}
+                  - label: "Cuerpo"
+                    name: cuerpo
+                    widget: text
+                    i18n: true
+                    hint: "Párrafos separados por una línea en blanco. Negrita: **texto**. Enlace: [texto](pagina:inversion). Viñetas: líneas que empiezan con «- ». Subtítulos: «## » y «### »."
+                    pattern: &patron_sin_raya
+                      - "^[^\\u2014]*$"
+                      - "No use guiones largos. Reemplácelos por una coma, un punto o dos puntos."
+              # ---------------------------------------------------------- texto_imagen
+              - &tipo_texto_imagen
+                label: "Texto con imagen"
+                name: texto_imagen
+                widget: object
+                summary: "Texto con imagen: {{fields.titulo}}"
+                fields:
+                  - {label: "Etiqueta (opcional)", name: etiqueta, widget: string, required: false, i18n: true}
+                  - {label: "Título", name: titulo, widget: string, i18n: true}
+                  - label: "Cuerpo"
+                    name: cuerpo
+                    widget: text
+                    i18n: true
+                    hint: "Párrafos separados por una línea en blanco. Negrita: **texto**. Enlace: [texto](pagina:inversion). Viñetas: líneas que empiezan con «- ». Aquí no se usan subtítulos."
+                    pattern: *patron_sin_raya
+                  - {label: "Imagen", name: imagen, widget: image, choose_url: false, allow_multiple: false, i18n: true, hint: "Elija la misma foto en español y en inglés."}
+                  - {label: "Texto alternativo de la imagen", name: alt, widget: string, i18n: true, hint: "Describa en una frase lo que se ve en la foto."}
+                  - label: "Lado de la imagen"
+                    name: lado
+                    widget: select
+                    i18n: true
+                    default: izquierda
+                    options:
+                      - {label: "Izquierda", value: izquierda}
+                      - {label: "Derecha", value: derecha}
+              # ---------------------------------------------------------- cifras
+              - &tipo_cifras
+                label: "Cifras"
+                name: cifras
+                widget: object
+                summary: "Cifras: {{fields.etiqueta}}"
+                fields:
+                  - {label: "Etiqueta", name: etiqueta, widget: string, i18n: true}
+                  - {label: "Nota (opcional)", name: nota, widget: string, required: false, i18n: true, hint: "Por ejemplo la fecha de los datos."}
+                  - label: "Cifras que se muestran"
+                    name: ids
+                    widget: list
+                    i18n: true
+                    hint: "Elija cifras de la lista. Sus valores se cambian en la sección «Cifras», nunca aquí. Use las mismas, en el mismo orden, en los dos idiomas."
+                    field:
+                      label: "Cifra"
+                      name: id
+                      widget: select
+                      i18n: true
+                      options: &opciones_cifras
+                        - {label: "Superficie", value: superficie}
+                        - {label: "Frente al río", value: frente_rio}
+                        - {label: "Almacenaje", value: almacenaje}
+                        - {label: "Almacenaje máximo proyectado", value: almacenaje_max}
+                        - {label: "Despacho", value: despacho}
+                        - {label: "Calado", value: calado}
+                        - {label: "Muelle", value: muelle}
+                        - {label: "Bombeo", value: bombeo}
+                        - {label: "Operación", value: operacion}
+              # ---------------------------------------------------------- puntos
+              - &tipo_puntos
+                label: "Puntos clave (sin orden)"
+                name: puntos
+                widget: object
+                summary: "Puntos clave: {{fields.titulo}}"
+                fields:
+                  - {label: "Etiqueta (opcional)", name: etiqueta, widget: string, required: false, i18n: true}
+                  - {label: "Título (opcional)", name: titulo, widget: string, required: false, i18n: true}
+                  - {label: "Introducción (opcional)", name: intro, widget: text, required: false, i18n: true}
+                  - label: "Puntos"
+                    name: items
+                    widget: list
+                    i18n: true
+                    label_singular: "punto"
+                    summary: "{{fields.titulo}}"
+                    hint: "Ideas sin orden: no se numeran. Si el orden importa, use el bloque «Secuencia»."
+                    fields:
+                      - {label: "Título", name: titulo, widget: string, i18n: true}
+                      - {label: "Texto", name: texto, widget: text, i18n: true}
+              # ---------------------------------------------------------- secuencia
+              - &tipo_secuencia
+                label: "Secuencia (pasos con orden)"
+                name: secuencia
+                widget: object
+                summary: "Secuencia: {{fields.titulo}}"
+                fields:
+                  - {label: "Etiqueta (opcional)", name: etiqueta, widget: string, required: false, i18n: true}
+                  - {label: "Título", name: titulo, widget: string, i18n: true}
+                  - {label: "Introducción (opcional)", name: intro, widget: text, required: false, i18n: true}
+                  - label: "Pasos"
+                    name: items
+                    widget: list
+                    i18n: true
+                    label_singular: "paso"
+                    summary: "{{fields.titulo}}"
+                    hint: "Los pasos se numeran según su orden. Cámbielo con las flechas."
+                    fields:
+                      - {label: "Título", name: titulo, widget: string, i18n: true}
+                      - {label: "Texto", name: texto, widget: text, i18n: true}
+                      - {label: "Cifra (opcional)", name: cifra, widget: string, required: false, i18n: true, hint: "Por ejemplo 87.000 m³ (en inglés, 87,000 m³)."}
+              # ---------------------------------------------------------- manifiesto
+              - &tipo_manifiesto
+                label: "Manifiesto (párrafo grande que se enciende al bajar)"
+                name: manifiesto
+                widget: object
+                summary: "Manifiesto: {{fields.etiqueta}}"
+                fields:
+                  - {label: "Etiqueta (opcional)", name: etiqueta, widget: string, required: false, i18n: true}
+                  - {label: "Texto", name: texto, widget: text, i18n: true, hint: "Un solo párrafo, de 30 a 60 palabras. Las cifras en negrita (**87.000 m³**) se pintan de azul.", pattern: *patron_sin_raya}
+                  - label: "Marcas (opcional)"
+                    name: marcas
+                    widget: list
+                    required: false
+                    i18n: true
+                    label_singular: "marca"
+                    hint: "Rasgos cortos, de dos a cinco palabras cada uno."
+                    field: {label: "Marca", name: marca, widget: string, i18n: true}
+                  - label: "Enlace (opcional)"
+                    name: enlace
+                    widget: object
+                    required: false
+                    i18n: true
+                    hint: "Complete los dos campos o deje los dos vacíos."
+                    fields:
+                      - {label: "Texto del enlace", name: texto, widget: string, required: false, i18n: true}
+                      - {label: "Dirección", name: url, widget: string, required: false, i18n: true, hint: "pagina:<id> o https://...", pattern: *patron_enlace }
+              # ---------------------------------------------------------- recorrido
+              - &tipo_recorrido
+                label: "Recorrido sobre la maqueta de la terminal"
+                name: recorrido
+                widget: object
+                summary: "Recorrido: {{fields.titulo}}"
+                fields:
+                  - {label: "Etiqueta (opcional)", name: etiqueta, widget: string, required: false, i18n: true}
+                  - {label: "Título", name: titulo, widget: string, i18n: true}
+                  - {label: "Introducción", name: intro, widget: text, i18n: true}
+                  - label: "Etapas"
+                    name: pasos
+                    widget: list
+                    i18n: true
+                    label_singular: "etapa"
+                    summary: "{{fields.titulo}} · {{fields.cifra}}"
+                    hint: "Cada etapa mueve la cámara a su parte de la maqueta. El orden es el del producto en la terminal."
+                    fields:
+                      - label: "Parte de la maqueta"
+                        name: id
+                        widget: select
+                        i18n: duplicate
+                        options:
+                          - {label: "Recepción (muelle y barcazas)", value: recepcion}
+                          - {label: "Almacenaje (tanques)", value: almacenaje}
+                          - {label: "Despacho (cargadero de camiones)", value: despacho}
+                          - {label: "Búnker (muelle y remolcador)", value: bunker}
+                          - {label: "Exportación (líneas al muelle)", value: exportacion}
+                          - {label: "Expansión (tanques proyectados)", value: expansion}
+                      - {label: "Título", name: titulo, widget: string, i18n: true}
+                      - {label: "Texto", name: texto, widget: text, i18n: true}
+                      - {label: "Cifra", name: cifra, widget: string, i18n: true, hint: "Por ejemplo 87.000 m³ (en inglés, 87,000 m³). Se cuenta de cero al llegar a la etapa."}
+                      - {label: "Rótulo en la maqueta (opcional)", name: llamada, widget: string, required: false, i18n: true, hint: "Si queda vacío, se usa la cifra."}
+                  - {label: "Nota", name: nota, widget: text, i18n: true, hint: "Aclara que la maqueta es un esquema y de dónde salen las cifras."}
+              # ---------------------------------------------------------- hidrovia
+              - &tipo_hidrovia
+                label: "Ubicación sobre la hidrovía (mapa)"
+                name: hidrovia
+                widget: object
+                summary: "Hidrovía: {{fields.titulo}}"
+                fields:
+                  - {label: "Etiqueta (opcional)", name: etiqueta, widget: string, required: false, i18n: true}
+                  - {label: "Título", name: titulo, widget: string, i18n: true}
+                  - {label: "Texto", name: texto, widget: text, i18n: true}
+                  - label: "Datos"
+                    name: datos
+                    widget: list
+                    i18n: true
+                    label_singular: "dato"
+                    summary: "{{fields.valor}} {{fields.texto}}"
+                    fields:
+                      - {label: "Valor", name: valor, widget: string, i18n: true, hint: "Por ejemplo 33 km."}
+                      - {label: "Texto", name: texto, widget: string, i18n: true}
+                  - {label: "Rótulo de Villeta en el mapa", name: villeta, widget: string, i18n: true}
+                  - {label: "Nota del mapa", name: nota, widget: string, i18n: true}
+              # ---------------------------------------------------------- ficha
+              - &tipo_ficha
+                label: "Ficha técnica"
+                name: ficha
+                widget: object
+                summary: "Ficha técnica: {{fields.titulo}}"
+                fields:
+                  - {label: "Etiqueta (opcional)", name: etiqueta, widget: string, required: false, i18n: true}
+                  - {label: "Título", name: titulo, widget: string, i18n: true}
+                  - {label: "Nota (opcional)", name: nota, widget: text, required: false, i18n: true}
+                  - label: "Grupos"
+                    name: grupos
+                    widget: list
+                    i18n: true
+                    label_singular: "grupo"
+                    summary: "{{fields.titulo}}"
+                    fields:
+                      - {label: "Título del grupo", name: titulo, widget: string, i18n: true}
+                      - label: "Filas"
+                        name: filas
+                        widget: list
+                        i18n: true
+                        label_singular: "fila"
+                        summary: "{{fields.dato}}: {{fields.valor}}"
+                        fields:
+                          - {label: "Dato", name: dato, widget: string, i18n: true}
+                          - {label: "Valor", name: valor, widget: string, i18n: true}
+                          - {label: "Nota (opcional)", name: nota, widget: string, required: false, i18n: true}
+              # ---------------------------------------------------------- banda_foto
+              - &tipo_banda_foto
+                label: "Banda con foto"
+                name: banda_foto
+                widget: object
+                summary: "Banda con foto: {{fields.titulo}}"
+                fields:
+                  - {label: "Imagen", name: imagen, widget: image, choose_url: false, allow_multiple: false, i18n: true, hint: "Elija la misma foto en español y en inglés."}
+                  - {label: "Texto alternativo de la imagen", name: alt, widget: string, i18n: true, hint: "Describa en una frase lo que se ve en la foto."}
+                  - {label: "Etiqueta (opcional)", name: etiqueta, widget: string, required: false, i18n: true}
+                  - {label: "Título", name: titulo, widget: string, i18n: true}
+                  - {label: "Texto (opcional)", name: texto, widget: text, required: false, i18n: true}
+                  - &campo_enlace_opcional
+                    label: "Enlace (opcional)"
+                    name: enlace
+                    widget: object
+                    required: false
+                    i18n: true
+                    hint: "Complete los dos campos o deje los dos vacíos."
+                    fields:
+                      - {label: "Texto del enlace", name: texto, widget: string, required: false, i18n: true}
+                      - {label: "Dirección", name: url, widget: string, required: false, i18n: true, hint: "pagina:<id> o https://...", pattern: *patron_enlace }
+              # ---------------------------------------------------------- galeria
+              - &tipo_galeria
+                label: "Galería"
+                name: galeria
+                widget: object
+                summary: "Galería: {{fields.titulo}}"
+                fields:
+                  - {label: "Etiqueta (opcional)", name: etiqueta, widget: string, required: false, i18n: true}
+                  - {label: "Título (opcional)", name: titulo, widget: string, required: false, i18n: true}
+                  - label: "Imágenes"
+                    name: imagenes
+                    widget: list
+                    i18n: true
+                    label_singular: "imagen"
+                    summary: "{{fields.epigrafe}}"
+                    fields:
+                      - {label: "Imagen", name: imagen, widget: image, choose_url: false, allow_multiple: false, i18n: true, hint: "Elija la misma foto en español y en inglés."}
+                      - {label: "Texto alternativo de la imagen", name: alt, widget: string, i18n: true, hint: "Describa en una frase lo que se ve en la foto."}
+                      - {label: "Epígrafe (pie de foto)", name: epigrafe, widget: string, i18n: true}
+              # ---------------------------------------------------------- capacidad
+              - &tipo_capacidad
+                label: "Capacidad actual y proyectada"
+                name: capacidad
+                widget: object
+                summary: "Capacidad: {{fields.titulo}}"
+                fields:
+                  - {label: "Etiqueta", name: etiqueta, widget: string, i18n: true}
+                  - {label: "Título", name: titulo, widget: string, i18n: true}
+                  - {label: "Texto", name: texto, widget: text, i18n: true}
+                  - {label: "Cifra actual", name: actual_id, widget: select, options: *opciones_cifras, i18n: true, hint: "Normalmente «Almacenaje»."}
+                  - {label: "Cifra máxima proyectada", name: maximo_id, widget: select, options: *opciones_cifras, i18n: true, hint: "Normalmente «Almacenaje máximo proyectado»."}
+                  - {label: "Nota legal", name: nota_legal, widget: text, i18n: true, hint: "Aviso de que las cifras proyectadas son estimaciones. Lo aprueba Legales."}
+                  - {label: "Foto de fondo (opcional)", name: imagen, widget: image, required: false, choose_url: false, allow_multiple: false, i18n: duplicate, hint: "Va a la derecha, detrás del nivel del tanque."}
+                  - {label: "Texto alternativo de la foto (opcional)", name: alt, widget: string, required: false, i18n: true}
+                  - label: "Botón (opcional)"
+                    name: boton
+                    widget: object
+                    required: false
+                    i18n: true
+                    hint: "Complete los dos campos o deje los dos vacíos."
+                    fields:
+                      - {label: "Texto del botón", name: texto, widget: string, required: false, i18n: true}
+                      - {label: "Dirección", name: url, widget: string, required: false, i18n: true, hint: "pagina:<id> o https://...", pattern: *patron_enlace }
+              # ---------------------------------------------------------- llamado
+              - &tipo_llamado
+                label: "Llamado a la acción"
+                name: llamado
+                widget: object
+                summary: "Llamado: {{fields.titulo}}"
+                fields:
+                  - {label: "Título", name: titulo, widget: string, i18n: true}
+                  - {label: "Texto", name: texto, widget: text, i18n: true}
+                  - label: "Botón"
+                    name: boton
+                    widget: object
+                    i18n: true
+                    fields:
+                      - {label: "Texto del botón", name: texto, widget: string, i18n: true, hint: "Diga qué pasa al hacer clic, por ejemplo «Escribir a Nuevos Negocios»."}
+                      - {label: "Dirección", name: url, widget: string, i18n: true, hint: "pagina:<id> o https://...", pattern: *patron_enlace }
+                  - label: "Estilo"
+                    name: estilo
+                    widget: select
+                    i18n: true
+                    default: azul
+                    options:
+                      - {label: "Azul", value: azul}
+                      - {label: "Claro", value: claro}
+              # ---------------------------------------------------------- formulario
+              - &tipo_formulario
+                label: "Formulario"
+                name: formulario
+                widget: object
+                summary: "Formulario: {{fields.titulo}}"
+                fields:
+                  - label: "Formulario que se muestra"
+                    name: form
+                    widget: select
+                    i18n: true
+                    options:
+                      - {label: "Contacto (área comercial)", value: contacto}
+                      - {label: "Inversores (Nuevos Negocios)", value: inversores}
+                  - {label: "Título", name: titulo, widget: string, i18n: true}
+                  - {label: "Introducción", name: intro, widget: text, i18n: true}
+              # ---------------------------------------------------------- documentos
+              - &tipo_documentos
+                label: "Documentos para descargar"
+                name: documentos
+                widget: object
+                summary: "Documentos: {{fields.titulo}}"
+                fields:
+                  - {label: "Etiqueta (opcional)", name: etiqueta, widget: string, required: false, i18n: true}
+                  - {label: "Título", name: titulo, widget: string, i18n: true}
+                  - label: "Documentos"
+                    name: items
+                    widget: list
+                    i18n: true
+                    label_singular: "documento"
+                    summary: "{{fields.nombre}}"
+                    fields:
+                      - {label: "Nombre", name: nombre, widget: string, i18n: true}
+                      - {label: "Descripción", name: descripcion, widget: text, i18n: true}
+                      - {label: "Formato", name: formato, widget: string, i18n: true, hint: "Por ejemplo PDF."}
+                      - {label: "Dirección del archivo (opcional)", name: url, widget: string, required: false, i18n: true, hint: "Déjela vacía si el documento todavía no está disponible: el sitio mostrará «Disponible próximamente».", pattern: *patron_enlace }
+              # ---------------------------------------------------------- contacto_datos
+              - &tipo_contacto_datos
+                label: "Datos de contacto"
+                name: contacto_datos
+                widget: object
+                summary: "Datos de contacto: {{fields.titulo}}"
+                fields:
+                  - {label: "Título", name: titulo, widget: string, i18n: true}
+                  - label: "Tarjetas"
+                    name: items
+                    widget: list
+                    i18n: true
+                    label_singular: "tarjeta"
+                    summary: "{{fields.titulo}}"
+                    fields:
+                      - {label: "Título", name: titulo, widget: string, i18n: true}
+                      - {label: "Texto", name: texto, widget: text, i18n: true}
+                      - *campo_enlace_opcional
+              # ---------------------------------------------------------- legal
+              - &tipo_legal
+                label: "Texto legal"
+                name: legal
+                widget: object
+                summary: "Texto legal"
+                fields:
+                  - {label: "Vigente desde", name: vigencia, widget: datetime, format: "YYYY-MM-DD", date_format: "YYYY-MM-DD", time_format: false, picker_utc: true, i18n: true, hint: "Fecha desde la que rige el texto, aprobada por Legales."}
+                  - label: "Cuerpo"
+                    name: cuerpo
+                    widget: text
+                    i18n: true
+                    hint: "Texto aprobado por Legales. Párrafos separados por una línea en blanco; subtítulos con «## » y «### »; viñetas con «- »."
+                    pattern: *patron_sin_raya
+
+      # ------------------------------------------------------------------ El Puerto (T2)
+      - name: el-puerto
+        label: "El Puerto"
+        description: "Plantilla T2 (institucional)."
+        file: contenido/paginas/el-puerto.json
+        i18n: true
+        fields:
+          - &campo_slug
+            label: "Dirección de la página (slug)"
+            name: slug
+            widget: string
+            i18n: true
+            hint: "Define la URL de la página. No lo cambie: lo cambia TI."
+            pattern: ['^[a-z0-9]+(-[a-z0-9]+)*(/[a-z0-9]+(-[a-z0-9]+)*)*$', "Sólo minúsculas, números y guiones, sin espacios ni tildes."]
+          - *campo_menu
+          - *campo_seo
+          - &campo_cabecera_imagen
+            label: "Cabecera"
+            name: cabecera
+            widget: object
+            i18n: true
+            fields:
+              - {label: "Etiqueta", name: etiqueta, widget: string, i18n: true}
+              - {label: "Título", name: titulo, widget: string, i18n: true}
+              - {label: "Bajada", name: bajada, widget: text, i18n: true}
+              - {label: "Imagen", name: imagen, widget: image, choose_url: false, allow_multiple: false, i18n: duplicate, hint: "Elija una foto de la biblioteca o suba una nueva (JPG o PNG). Es la misma en los dos idiomas."}
+              - {label: "Texto alternativo de la imagen", name: alt, widget: string, i18n: true, hint: "Describa en una frase lo que se ve en la foto."}
+          - *campo_bloques
+
+      # ------------------------------------------------------------------ Infraestructura (T3)
+      - name: infraestructura
+        label: "Infraestructura"
+        description: "Plantilla T3 (ficha técnica)."
+        file: contenido/paginas/infraestructura.json
+        i18n: true
+        fields:
+          - *campo_slug
+          - *campo_menu
+          - *campo_seo
+          - *campo_cabecera_imagen
+          - *campo_bloques
+
+      # ------------------------------------------------------------------ Operaciones (T2)
+      - name: operaciones
+        label: "Operaciones"
+        description: "Plantilla T2 (institucional)."
+        file: contenido/paginas/operaciones.json
+        i18n: true
+        fields:
+          - *campo_slug
+          - *campo_menu
+          - *campo_seo
+          - *campo_cabecera_imagen
+          - *campo_bloques
+
+      # ------------------------------------------------------------------ Seguridad (T2)
+      - name: seguridad
+        label: "Seguridad"
+        description: "Plantilla T2 (institucional). No se publican ubicaciones ni configuraciones de seguridad."
+        file: contenido/paginas/seguridad.json
+        i18n: true
+        fields:
+          - *campo_slug
+          - *campo_menu
+          - *campo_seo
+          - *campo_cabecera_imagen
+          - *campo_bloques
+
+      # ------------------------------------------------------------------ Inversión (T4)
+      - name: inversion
+        label: "Inversión"
+        description: "Plantilla T4 (inversión)."
+        file: contenido/paginas/inversion.json
+        i18n: true
+        fields:
+          - *campo_slug
+          - *campo_menu
+          - *campo_seo
+          - *campo_cabecera_imagen
+          - *campo_bloques
+
+      # ------------------------------------------------------------------ Sostenibilidad (T2)
+      - name: sostenibilidad
+        label: "Sostenibilidad"
+        description: "Plantilla T2 (institucional)."
+        file: contenido/paginas/sostenibilidad.json
+        i18n: true
+        fields:
+          - *campo_slug
+          - *campo_menu
+          - *campo_seo
+          - *campo_cabecera_imagen
+          - *campo_bloques
+
+      # ------------------------------------------------------------------ Noticias (T5, listado)
+      - name: noticias
+        label: "Noticias (página del listado)"
+        description: "Plantilla T5. Es la página que lista las noticias; cada noticia se edita en la colección «Noticias»."
+        file: contenido/paginas/noticias.json
+        i18n: true
+        fields:
+          - *campo_slug
+          - *campo_menu
+          - *campo_seo
+          - &campo_cabecera_opcional
+            label: "Cabecera"
+            name: cabecera
+            widget: object
+            i18n: true
+            fields:
+              - {label: "Etiqueta (opcional)", name: etiqueta, widget: string, required: false, i18n: true}
+              - {label: "Título", name: titulo, widget: string, i18n: true}
+              - {label: "Bajada (opcional)", name: bajada, widget: text, required: false, i18n: true}
+              - {label: "Imagen (opcional)", name: imagen, widget: image, required: false, choose_url: false, allow_multiple: false, i18n: duplicate, hint: "Es la misma en los dos idiomas. Déjela vacía si la página no lleva foto."}
+              - {label: "Texto alternativo de la imagen", name: alt, widget: string, required: false, i18n: true, hint: "Obligatorio si hay imagen."}
+          - *campo_bloques
+
+      # ------------------------------------------------------------------ Contacto (T7)
+      - name: contacto
+        label: "Contacto"
+        description: "Plantilla T7 (contacto)."
+        file: contenido/paginas/contacto.json
+        i18n: true
+        fields:
+          - *campo_slug
+          - *campo_menu
+          - *campo_seo
+          - *campo_cabecera_opcional
+          - *campo_bloques
+
+      # ------------------------------------------------------------------ Textos legales (T8)
+      # Cabecera sin imagen y un solo bloque "legal" (min 1, max 1).
+      - name: privacidad
+        label: "Política de privacidad"
+        description: "Plantilla T8 (legal). El texto lo redacta y aprueba Legales."
+        file: contenido/paginas/privacidad.json
+        i18n: true
+        fields:
+          - *campo_slug
+          - *campo_menu
+          - *campo_seo
+          - &campo_cabecera_sin_imagen
+            label: "Cabecera"
+            name: cabecera
+            widget: object
+            i18n: true
+            fields:
+              - {label: "Etiqueta (opcional)", name: etiqueta, widget: string, required: false, i18n: true}
+              - {label: "Título", name: titulo, widget: string, i18n: true}
+              - {label: "Bajada (opcional)", name: bajada, widget: text, required: false, i18n: true}
+          - &campo_bloques_legal
+            label: "Texto legal"
+            name: bloques
+            widget: list
+            i18n: true
+            typeKey: tipo
+            min: 1
+            max: 1
+            label_singular: "texto legal"
+            hint: "Un solo bloque con el texto y la fecha de vigencia."
+            types:
+              - *tipo_legal
+
+      - name: aviso-legal
+        label: "Aviso legal"
+        description: "Plantilla T8 (legal). El texto lo redacta y aprueba Legales."
+        file: contenido/paginas/aviso-legal.json
+        i18n: true
+        fields:
+          - *campo_slug
+          - *campo_menu
+          - *campo_seo
+          - *campo_cabecera_sin_imagen
+          - *campo_bloques_legal
+
+      - name: cookies
+        label: "Política de cookies"
+        description: "Plantilla T8 (legal). La tabla real de cookies la valida TI y la aprueba Legales."
+        file: contenido/paginas/cookies.json
+        i18n: true
+        fields:
+          - *campo_slug
+          - *campo_menu
+          - *campo_seo
+          - *campo_cabecera_sin_imagen
+          - *campo_bloques_legal
+
+      # ------------------------------------------------------------------ Páginas de sistema (T9)
+      # Cabecera sin imagen y bloques "llamado" (el generador sólo lee esos).
+      - name: gracias-contacto
+        label: "Gracias por escribir (contacto)"
+        description: "Plantilla T9 (sistema). Se muestra después de enviar el formulario de contacto."
+        file: contenido/paginas/gracias-contacto.json
+        i18n: true
+        fields:
+          - *campo_slug
+          - *campo_menu
+          - *campo_seo
+          - *campo_cabecera_sin_imagen
+          - &campo_bloques_sistema
+            label: "Llamado a la acción"
+            name: bloques
+            widget: list
+            i18n: true
+            typeKey: tipo
+            label_singular: "llamado"
+            hint: "Texto y botón que se muestran bajo el mensaje de agradecimiento."
+            types:
+              - *tipo_llamado
+
+      - name: gracias-inversion
+        label: "Gracias por escribir (inversión)"
+        description: "Plantilla T9 (sistema). Se muestra después de enviar el formulario de inversores."
+        file: contenido/paginas/gracias-inversion.json
+        i18n: true
+        fields:
+          - *campo_slug
+          - *campo_menu
+          - *campo_seo
+          - *campo_cabecera_sin_imagen
+          - *campo_bloques_sistema
+
+  # ===========================================================================
+  # NOTICIAS: contenido/noticias/<id>.json (ESPECIFICACION.md, seccion 5.4).
+  # No usa i18n de Decap: fecha, imagen y ejemplo van en la raiz del archivo y es/en
+  # son dos objetos, tal como el modelo.
+  # ===========================================================================
+  - name: noticias
+    label: "Noticias"
+    label_singular: "Noticia"
+    description: "Una entrada por noticia, con su versión en español y en inglés."
+    folder: contenido/noticias
+    extension: json
+    format: json
+    create: true
+    delete: true
+    # Nombre del archivo: <fecha>-<slug en español>.json, como los de ejemplo (contenido/noticias/).
+    # Si Decap no resolviera "fields.es.slug" (campo dentro del objeto es) y el nombre saliera solo
+    # con la fecha, cambiar esta línea por "{{year}}-{{month}}-{{day}}-{{hour}}{{minute}}{{second}}".
+    identifier_field: fecha
+    slug: "{{fecha}}-{{fields.es.slug}}"
+    summary: "{{fecha}} · {{fields.es.titulo}}"
+    sortable_fields: ["fecha"]
+    view_filters:
+      - {label: "Noticias de ejemplo", field: ejemplo, pattern: true}
+    editor:
+      preview: false
+    fields:
+      - {label: "Fecha de publicación", name: fecha, widget: datetime, format: "YYYY-MM-DD", date_format: "YYYY-MM-DD", time_format: false, picker_utc: true, hint: "La noticia se ordena por esta fecha."}
+      - {label: "Imagen de portada", name: imagen, widget: image, choose_url: false, allow_multiple: false, hint: "Elija una foto de la biblioteca o suba una nueva (JPG o PNG). Es la misma en los dos idiomas."}
+      - {label: "Noticia de ejemplo", name: ejemplo, widget: boolean, default: false, required: false, hint: "Márquela sólo si es una muestra. Las noticias de ejemplo no se publican en el sitio real."}
+      - label: "Español"
+        name: es
+        widget: object
+        fields: &campos_noticia
+          - label: "Dirección de la noticia (slug)"
+            name: slug
+            widget: string
+            hint: "Aparece en la URL. Minúsculas, números y guiones, sin tildes. Ejemplo: nuevo-contrato-de-almacenaje"
+            pattern: ['^[a-z0-9]+(-[a-z0-9]+)*$', "Sólo minúsculas, números y guiones, sin espacios ni tildes."]
+          - {label: "Título", name: titulo, widget: string}
+          - {label: "Resumen", name: resumen, widget: text, hint: "Una o dos frases. Aparece en el listado."}
+          - label: "Cuerpo"
+            name: cuerpo
+            widget: text
+            hint: "Párrafos separados por una línea en blanco. Negrita: **texto**. Enlace: [texto](pagina:inversion). Viñetas: líneas que empiezan con «- »."
+            pattern: *patron_sin_raya
+          - {label: "Texto alternativo de la imagen", name: alt, widget: string, hint: "Describa en una frase lo que se ve en la foto."}
+      - label: "English"
+        name: en
+        widget: object
+        fields: *campos_noticia
+
+  # ===========================================================================
+  # CIFRAS: contenido/datos.json, fuente unica de las cifras (ESPECIFICACION.md, 5.3).
+  # Decap no tiene un widget de "diccionario" con claves libres: cada cifra conocida es un
+  # objeto fijo. Agregar una cifra nueva exige que TI la copie aqui y en las listas de ids
+  # (README, "Decap CMS frente al modelo de contenido", punto 2).
+  # ===========================================================================
+  - name: cifras
+    label: "Cifras"
+    label_singular: "Cifra"
+    description: "Fuente única de las cifras de la terminal. Se cambian aquí y se reflejan en todas las páginas."
+    editor:
+      preview: false
+    files:
+      - name: datos
+        label: "Cifras de la terminal"
+        file: contenido/datos.json
+        fields:
+          - label: "Cifras"
+            name: cifras
+            widget: object
+            hint: "Cada cifra tiene su texto en español, su texto en inglés, el número y la fuente."
+            fields:
+              - label: "Superficie"
+                name: superficie
+                widget: object
+                collapsed: true
+                fields: &campos_cifra
+                  - {label: "Fuente", name: fuente, widget: string, hint: "De dónde sale el dato, por ejemplo Brochure institucional de PSD."}
+                  - {label: "Fecha del dato (AAAA-MM)", name: fecha, widget: string, pattern: ['^\d{4}-(0[1-9]|1[0-2])$', "Use el formato AAAA-MM, por ejemplo 2026-10."]}
+                  - {label: "Número (sin unidad ni separadores)", name: numero, widget: number, value_type: int, min: 0, hint: "Por ejemplo 87000. El sitio lo usa para las comparaciones; debe coincidir con el texto de la cifra."}
+                  - label: "Español"
+                    name: es
+                    widget: object
+                    fields: &campos_idioma_cifra
+                      - {label: "Etiqueta", name: etiqueta, widget: string}
+                      - {label: "Valor, con su unidad", name: valor, widget: string, hint: "Español: punto para los miles (87.000 m³). Inglés: coma (87,000 m³)."}
+                      - {label: "Nota", name: nota, widget: string}
+                  - label: "English"
+                    name: en
+                    widget: object
+                    fields: *campos_idioma_cifra
+              - label: "Frente al río"
+                name: frente_rio
+                widget: object
+                collapsed: true
+                fields: *campos_cifra
+              - label: "Almacenaje"
+                name: almacenaje
+                widget: object
+                collapsed: true
+                fields: *campos_cifra
+              - label: "Almacenaje máximo proyectado"
+                name: almacenaje_max
+                widget: object
+                collapsed: true
+                fields: *campos_cifra
+              - label: "Despacho"
+                name: despacho
+                widget: object
+                collapsed: true
+                fields: *campos_cifra
+              - label: "Calado"
+                name: calado
+                widget: object
+                collapsed: true
+                fields: *campos_cifra
+              - label: "Muelle"
+                name: muelle
+                widget: object
+                collapsed: true
+                fields: *campos_cifra
+              - label: "Bombeo"
+                name: bombeo
+                widget: object
+                collapsed: true
+                fields: *campos_cifra
+              - label: "Operación"
+                name: operacion
+                widget: object
+                collapsed: true
+                fields: *campos_cifra
+
+  # ===========================================================================
+  # TEXTOS DEL SITIO: contenido/sitio.json (ESPECIFICACION.md, 5.5).
+  # Las claves son fijas; Marketing solo escribe los valores.
+  # ===========================================================================
+  - name: sitio
+    label: "Textos del sitio"
+    label_singular: "Textos del sitio"
+    description: "Menú, pie, banner de cookies, formularios y mensajes de error. Las claves no se cambian; sólo los textos."
+    editor:
+      preview: false
+    files:
+      - name: sitio
+        label: "Textos comunes del sitio"
+        file: contenido/sitio.json
+        i18n: true
+        fields:
+          - {label: "Nombre del sitio", name: nombre, widget: string, i18n: duplicate}
+          - label: "Menú principal"
+            name: menu
+            widget: list
+            i18n: true
+            label_singular: "enlace"
+            hint: "Páginas del menú, en orden. Use las mismas, en el mismo orden, en los dos idiomas."
+            field:
+              label: "Página"
+              name: pagina
+              widget: select
+              i18n: true
+              options: &opciones_paginas
+                - {label: "Inicio", value: inicio}
+                - {label: "El Puerto", value: el-puerto}
+                - {label: "Infraestructura", value: infraestructura}
+                - {label: "Operaciones", value: operaciones}
+                - {label: "Seguridad", value: seguridad}
+                - {label: "Inversión", value: inversion}
+                - {label: "Sostenibilidad", value: sostenibilidad}
+                - {label: "Noticias", value: noticias}
+                - {label: "Contacto", value: contacto}
+                - {label: "Política de privacidad", value: privacidad}
+                - {label: "Aviso legal", value: aviso-legal}
+                - {label: "Política de cookies", value: cookies}
+                - {label: "Gracias (contacto)", value: gracias-contacto}
+                - {label: "Gracias (inversión)", value: gracias-inversion}
+          - label: "Textos comunes"
+            name: comunes
+            widget: object
+            i18n: true
+            fields:
+              - {label: "Enlace «Saltar al contenido»", name: saltar, widget: string, i18n: true}
+              - {label: "Botón del menú: abrir", name: menu_abrir, widget: string, i18n: true}
+              - {label: "Botón del menú: cerrar", name: menu_cerrar, widget: string, i18n: true}
+              - {label: "Etiqueta del selector de idioma", name: idioma, widget: string, i18n: true}
+              - {label: "Texto alternativo del logo (lleva al inicio)", name: inicio_alt, widget: string, i18n: true}
+              - {label: "Primer paso de las migas de pan (Inicio)", name: migas_inicio, widget: string, i18n: true}
+              - {label: "Enlace de cada noticia (Leer la noticia)", name: leer_mas, widget: string, i18n: true}
+              - {label: "Enlace para volver al listado de noticias", name: volver_noticias, widget: string, i18n: true}
+              - {label: "Palabra «Fuente»", name: fuente, widget: string, i18n: true}
+              - {label: "Palabra «Actualizado»", name: actualizado, widget: string, i18n: true}
+              - {label: "Marca «a validar» (vista de revisión)", name: a_validar, widget: string, i18n: true}
+              - {label: "Chapa «Ejemplo» de las noticias de muestra", name: ejemplo, widget: string, i18n: true}
+              - {label: "Palabra «Siguiente»", name: siguiente, widget: string, i18n: true}
+              - {label: "Texto «Vigente desde»", name: vigencia, widget: string, i18n: true}
+              - {label: "Botón «Descargar»", name: descargar, widget: string, i18n: true}
+              - {label: "Texto «Disponible próximamente»", name: proximamente, widget: string, i18n: true}
+          - label: "Pie de página"
+            name: pie
+            widget: object
+            i18n: true
+            fields:
+              - {label: "Descripción", name: descripcion, widget: string, i18n: true}
+              - label: "Columnas de enlaces"
+                name: columnas
+                widget: list
+                i18n: true
+                label_singular: "columna"
+                summary: "{{fields.titulo}}"
+                fields:
+                  - {label: "Título de la columna", name: titulo, widget: string, i18n: true}
+                  - label: "Páginas de la columna"
+                    name: ids
+                    widget: list
+                    i18n: true
+                    field:
+                      label: "Página"
+                      name: pagina
+                      widget: select
+                      options: *opciones_paginas
+                      i18n: true
+              - {label: "Frase del Grupo", name: grupo, widget: string, i18n: true}
+              - {label: "Copyright", name: copyright, widget: string, i18n: duplicate}
+              - {label: "Enlace «Preferencias de cookies»", name: preferencias, widget: string, i18n: true}
+              - {label: "Dirección", name: direccion, widget: string, i18n: true}
+          - label: "Banner de cookies"
+            name: cookies
+            widget: object
+            i18n: true
+            hint: "Los textos los aprueba Legales."
+            fields:
+              - {label: "Título", name: titulo, widget: string, i18n: true}
+              - {label: "Texto", name: texto, widget: text, i18n: true}
+              - {label: "Botón Aceptar", name: aceptar, widget: string, i18n: true}
+              - {label: "Botón Rechazar", name: rechazar, widget: string, i18n: true}
+              - {label: "Botón Configurar", name: configurar, widget: string, i18n: true}
+              - {label: "Cookies necesarias", name: necesarias, widget: string, i18n: true}
+              - {label: "Cookies de analítica", name: analitica, widget: string, i18n: true}
+              - {label: "Botón Guardar preferencias", name: guardar, widget: string, i18n: true}
+              - {label: "Enlace a la política de cookies", name: politica, widget: string, i18n: true}
+          - label: "Formularios"
+            name: formularios
+            widget: object
+            i18n: true
+            fields:
+              - label: "Textos comunes de los formularios"
+                name: comunes
+                widget: object
+                i18n: true
+                hint: "El aviso de privacidad lo aprueba Legales."
+                fields:
+                  - {label: "Etiqueta «Obligatorio»", name: obligatorio, widget: string, i18n: true}
+                  - {label: "Etiqueta «Opcional»", name: opcional, widget: string, i18n: true}
+                  - {label: "Aviso de privacidad", name: aviso, widget: text, i18n: true}
+                  - {label: "Enlace a la política de privacidad", name: aviso_enlace, widget: string, i18n: true}
+                  - {label: "Error: campo vacío", name: error_campo, widget: string, i18n: true}
+                  - {label: "Error: correo inválido", name: error_correo, widget: string, i18n: true}
+                  - {label: "Error: no se pudo enviar", name: error_envio, widget: string, i18n: true}
+                  - {label: "Mensaje «Enviando»", name: enviando, widget: string, i18n: true}
+                  - {label: "Mensaje de la vista de revisión (no se envía)", name: simulado, widget: string, i18n: true}
+              - label: "Formulario de contacto"
+                name: contacto
+                widget: object
+                i18n: true
+                fields:
+                  - {label: "Título", name: titulo, widget: string, i18n: true}
+                  - label: "Nombres de los campos"
+                    name: campos
+                    widget: object
+                    i18n: true
+                    fields:
+                      - {label: "Nombre", name: nombre, widget: string, i18n: true}
+                      - {label: "Empresa", name: empresa, widget: string, i18n: true}
+                      - {label: "País", name: pais, widget: string, i18n: true}
+                      - {label: "Correo electrónico", name: correo, widget: string, i18n: true}
+                      - {label: "Mensaje", name: mensaje, widget: string, i18n: true}
+                  - {label: "Texto del botón de envío", name: enviar, widget: string, i18n: true}
+                  - {label: "Correo directo del área", name: correo_directo, widget: string, i18n: duplicate}
+              - label: "Formulario de inversores"
+                name: inversores
+                widget: object
+                i18n: true
+                fields:
+                  - {label: "Título", name: titulo, widget: string, i18n: true}
+                  - label: "Nombres de los campos"
+                    name: campos
+                    widget: object
+                    i18n: true
+                    fields:
+                      - {label: "Nombre", name: nombre, widget: string, i18n: true}
+                      - {label: "Organización", name: organizacion, widget: string, i18n: true}
+                      - {label: "Cargo", name: cargo, widget: string, i18n: true}
+                      - {label: "País", name: pais, widget: string, i18n: true}
+                      - {label: "Correo electrónico", name: correo, widget: string, i18n: true}
+                      - {label: "Teléfono", name: telefono, widget: string, i18n: true}
+                      - {label: "Tipo de interés", name: interes, widget: string, i18n: true}
+                      - {label: "Mensaje", name: mensaje, widget: string, i18n: true}
+                  # "intereses" (lista cerrada de «Tipo de interés») NO se declara a propósito: la API
+                  # la valida contra sitio.json (api/nucleo.py) y un cambio rompería los envíos.
+                  # Decap conserva lo que no declara, así que sigue en el archivo pero Marketing no
+                  # la ve. La cambia Seguridad y backend, junto con la API (docs/pedidos_entre_equipos.md).
+                  - {label: "Texto del botón de envío", name: enviar, widget: string, i18n: true}
+                  - {label: "Correo directo del área", name: correo_directo, widget: string, i18n: duplicate}
+          - label: "Página no encontrada (404)"
+            name: error404
+            widget: object
+            i18n: true
+            fields:
+              - {label: "Título", name: titulo, widget: string, i18n: true}
+              - {label: "Texto", name: texto, widget: text, i18n: true}
+              - {label: "Botón", name: boton, widget: string, i18n: true}

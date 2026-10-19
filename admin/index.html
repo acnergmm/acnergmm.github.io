@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- El administrador no se indexa nunca. robots.txt (generar.py) tambien lo excluye. -->
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="same-origin">
+  <title>Administrador de contenidos · Puerto Santo Domingo</title>
+  <!-- La configuracion vive en admin/config.yml (mismo directorio). -->
+  <link href="/admin/config.yml" type="text/yaml" rel="cms-config-url">
+</head>
+<body>
+  <noscript>Este administrador necesita JavaScript. Actívelo en su navegador para editar el sitio.</noscript>
+
+  <!--
+    Decap CMS 3.3.3, fijada a una version exacta (no usar rangos como ^3.0.0).
+    Elegida el 5-oct-2026 como una 3.x publicada y conocida; NO se pudo consultar el registro
+    de npm desde la PC donde se escribio este archivo. TI debe verificar, antes del primer uso:
+      1. que https://unpkg.com/decap-cms@3.16.3/dist/decap-cms.js responde con el script;
+      2. si existe una 3.x posterior estable (https://www.npmjs.com/package/decap-cms?activeTab=versions),
+         probarla primero en una vista previa de pull request y recien despues cambiar este numero.
+    Endurecimiento recomendado (ver README, seccion "Seguridad del administrador"):
+      a) agregar integrity="sha384-..." y crossorigin="anonymous" (SRI) con el hash calculado por TI;
+      b) o alojar el archivo en admin/vendor/ y apuntar el script ahi, para quitar unpkg.com de la CSP.
+    No agregar integrity con un valor inventado: un hash incorrecto impide que el script cargue.
+  -->
+  <script src="https://unpkg.com/decap-cms@3.16.3/dist/decap-cms.js"></script>
+</body>
+</html>
